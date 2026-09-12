@@ -20,8 +20,8 @@ public class Booking {
     private User user;
 
     @ManyToOne
-    @JoinColumn(name = "show_id")
-    private Show show;
+    @JoinColumn(name = "seat_id")
+    private Seat seat;
 
     private LocalTime bookingTime;
 
