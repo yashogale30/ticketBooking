@@ -13,7 +13,6 @@ public class JwtUtil {
 
     private final String SECRET = "replace-this-with-a-long-random-secret-key-later-env-var";
 
-    // This is the new method that fixes your crash by converting the string to bytes
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET.getBytes());
     }
@@ -25,13 +24,13 @@ public class JwtUtil {
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256) // Updated here
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public String extractEmail(String token) {
-        return Jwts.parserBuilder() // Updated here
-                .setSigningKey(getSigningKey()) // Updated here
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
@@ -43,8 +42,8 @@ public class JwtUtil {
     }
 
     private boolean isTokenExpired(String token) {
-        Date expiration = Jwts.parserBuilder() // Updated here
-                .setSigningKey(getSigningKey()) // Updated here
+        Date expiration = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody()

@@ -21,4 +21,7 @@ public class Seat {
     @ManyToOne
     @JoinColumn(name = "event_id")
     private Event event;
+
+    @Version
+    private Integer version; // For optimistic locking
 }
