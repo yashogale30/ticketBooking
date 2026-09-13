@@ -4,6 +4,7 @@ import com.yash.ticketBooking.entity.Booking;
 import com.yash.ticketBooking.entity.User;
 import com.yash.ticketBooking.repository.UserRepository;
 import com.yash.ticketBooking.service.BookingService;
+import com.yash.ticketBooking.service.IdempotencyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -12,6 +13,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/bookings")
@@ -21,6 +23,8 @@ public class BookingController {
     private BookingService bookingService;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private IdempotencyService idempotencyService;
 
     @GetMapping
     public List<Booking> getAll(){return bookingService.GetAll();}
@@ -47,11 +51,22 @@ public class BookingController {
         }
     }
 
-    @PostMapping("/pessimistic/{seatId}")//this is the pessimistic locking version
-    public ResponseEntity<?> bookPessimistic(@PathVariable Long seatId, @AuthenticationPrincipal UserDetails userDetails) {
+    @PostMapping("/pessimistic/{seatId}")
+    public ResponseEntity<?> bookPessimistic(
+            @PathVariable Long seatId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        Optional<Booking> existing = idempotencyService.getExistingResponse(idempotencyKey);
+        if (existing.isPresent()) {
+            System.out.println("Idempotent replay — returning cached result for key " + idempotencyKey);
+            return ResponseEntity.ok(existing.get());
+        }
+
         try {
             User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
             Booking booking = bookingService.bookSeatPessimistic(seatId, user);
+            idempotencyService.saveResponse(idempotencyKey, booking);
             return ResponseEntity.ok(booking);
         } catch (RuntimeException e) {
             return ResponseEntity.status(409).body(e.getMessage());
