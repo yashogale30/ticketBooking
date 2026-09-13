@@ -68,6 +68,7 @@ public class BookingService {
 
         seat.setStatus(SeatStatus.BOOKED);
         seatRepository.save(seat);
+        seatService.invalidateSeatsCache(seat.getEvent().getId());//for redis cache invalidation after booking
 
         Booking booking = new Booking();
         booking.setSeat(seat);
