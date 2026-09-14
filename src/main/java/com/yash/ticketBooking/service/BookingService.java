@@ -1,8 +1,10 @@
 package com.yash.ticketBooking.service;
 
+import com.yash.ticketBooking.config.RabbitMQConfig;
 import com.yash.ticketBooking.entity.*;
 import com.yash.ticketBooking.repository.BookingRepository;
 import com.yash.ticketBooking.repository.SeatRepository;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,9 +19,10 @@ public class BookingService {
     private BookingRepository bookingRepository;
     @Autowired
     private SeatService seatService;
-
     @Autowired
     private SeatRepository seatRepository;
+    @Autowired private RabbitTemplate rabbitTemplate;
+
 
     public List<Booking> GetAll(){return bookingRepository.findAll();}
 
@@ -74,7 +77,17 @@ public class BookingService {
         booking.setSeat(seat);
         booking.setUser(user);
         booking.setStatus(BookingStatus.CONFIRMED);
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE_NAME,
+                RabbitMQConfig.ROUTING_KEY,
+                savedBooking
+        );
+        System.out.println("Published booking confirmation message for booking " + savedBooking.getId());
+
+        return savedBooking;
+
     }
 }
 
