@@ -5,6 +5,7 @@ import com.yash.ticketBooking.entity.User;
 import com.yash.ticketBooking.repository.UserRepository;
 import com.yash.ticketBooking.service.BookingService;
 import com.yash.ticketBooking.service.IdempotencyService;
+import com.yash.ticketBooking.service.RateLimiterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -25,6 +26,8 @@ public class BookingController {
     private UserRepository userRepository;
     @Autowired
     private IdempotencyService idempotencyService;
+    @Autowired
+    private RateLimiterService rateLimiterService;
 
     @GetMapping
     public List<Booking> getAll(){return bookingService.GetAll();}
@@ -56,6 +59,10 @@ public class BookingController {
             @PathVariable Long seatId,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (!rateLimiterService.isAllowed(userDetails.getUsername())) {
+            return ResponseEntity.status(429).body("Too many requests, please slow down.");
+        }
 
         Optional<Booking> existing = idempotencyService.getExistingResponse(idempotencyKey);
         if (existing.isPresent()) {
